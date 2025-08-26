@@ -35,6 +35,12 @@
     tr:nth-child(even) {
       background: #f2f2f2;
     }
+    input.filter {
+      width: 90%;
+      padding: 4px;
+      margin-top: 4px;
+      box-sizing: border-box;
+    }
   </style>
 </head>
 <body>
@@ -45,51 +51,9 @@
 
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbwN_PCfE_zbJc4WuNn22e63eNsd4t3HkAeQuil9QdmcfbDpGP5L9oBru1_JuBfGyl-o6w/exec";
+    let allData = [];
 
     async function loadData() {
       try {
         let res = await fetch(API_URL);
-        let data = await res.json();
-
-        let table = document.getElementById("dataTable");
-
-        if (!data || data.length === 0) {
-          table.innerHTML = "<tr><td>❌ ไม่มีข้อมูล</td></tr>";
-          return;
-        }
-
-        // สร้าง header
-        let html = `
-          <tr>
-            <th>สาขา</th>
-            <th>วันที่</th>
-            <th>เวลา</th>
-            <th>พนักงาน</th>
-          </tr>
-        `;
-
-        // แสดงทุกแถว
-        data.forEach(row => {
-          html += `
-            <tr>
-              <td>${row.branch || "-"}</td>
-              <td>${row.date || "-"}</td>
-              <td>${row.time || "-"}</td>
-              <td>${row.staff || "-"}</td>
-            </tr>
-          `;
-        });
-
-        table.innerHTML = html;
-
-      } catch (err) {
-        console.error(err);
-        document.getElementById("dataTable").innerHTML = "<tr><td>⚠️ โหลดข้อมูลผิดพลาด</td></tr>";
-      }
-    }
-
-    // โหลดข้อมูลเมื่อเปิดหน้าเว็บ
-    loadData();
-  </script>
-</body>
-</html>
+        all
