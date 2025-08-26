@@ -1,136 +1,99 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>รายงานส่งยอดขายรายวัน</title>
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
-      background: #f9f9f9;
-      text-align: center;
-    }
-    h2 {
-      margin-bottom: 20px;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      max-width: 600px;
-      margin: 0 auto;
-      background: #fff;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px 12px;
-      text-align: center;
-    }
-    th {
-      background: #4CAF50;
-      color: white;
-    }
-    tr:nth-child(even) {
-      background: #f2f2f2;
-    }
-    .pagination {
-      margin-top: 10px;
-    }
-    button {
-      padding: 6px 12px;
-      margin: 0 5px;
-      cursor: pointer;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>รายงานส่งยอดขายรายวัน</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body { font-family: sans-serif; padding:20px; background:#f9f9f9; text-align:center; }
+h2 { margin-bottom:20px; }
+table { border-collapse: collapse; width:100%; max-width:600px; margin:0 auto; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+th, td { border:1px solid #ddd; padding:8px 12px; text-align:center; }
+th { background:#4CAF50; color:white; }
+tr:nth-child(even) { background:#f2f2f2; }
+button { padding:6px 12px; margin:5px; cursor:pointer; }
+</style>
 </head>
 <body>
-  <h2>💰 รายงานส่งยอดขายรายวัน</h2>
-  <table id="dataTable">
-    <tr><td>กำลังโหลดข้อมูล...</td></tr>
-  </table>
+<h2>💰 รายงานส่งยอดขายรายวัน</h2>
+<table id="dataTable">
+  <tr><td>กำลังโหลดข้อมูล...</td></tr>
+</table>
+<div>
+  <button id="prevBtn" onclick="prevPage()" disabled>◀ ก่อนหน้า</button>
+  <span id="pageInfo">หน้า 1</span>
+  <button id="nextBtn" onclick="nextPage()">ถัดไป ▶</button>
+</div>
 
-  <div class="pagination">
-    <button id="prevBtn" onclick="prevPage()">◀ ก่อนหน้า</button>
-    <span id="pageInfo">หน้า 1</span>
-    <button id="nextBtn" onclick="nextPage()">ถัดไป ▶</button>
-  </div>
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbwN_PCfE_zbJc4WuNn22e63eNsd4t3HkAeQuil9QdmcfbDpGP5L9oBru1_JuBfGyl-o6w/exec";
+let currentPage = 0;
+const pageSize = 20;
+let totalRows = 0;
 
-  <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbwN_PCfE_zbJc4WuNn22e63eNsd4t3HkAeQuil9QdmcfbDpGP5L9oBru1_JuBfGyl-o6w/exec";
-    let allData = [];
-    let currentPage = 1;
-    const pageSize = 20;
+async function loadPage(page) {
+  const start = page * pageSize;
+  try {
+    const res = await fetch(`${API_URL}?start=${start}&limit=${pageSize}`);
+    const json = await res.json();
+    totalRows = json.total;
+    renderTable(json.data);
+    updateButtons();
+  } catch (err) {
+    console.error(err);
+    document.getElementById("dataTable").innerHTML = "<tr><td>⚠️ โหลดข้อมูลผิดพลาด</td></tr>";
+  }
+}
 
-    async function loadData() {
-      try {
-        let res = await fetch(API_URL);
-        allData = await res.json();
+function renderTable(data) {
+  const table = document.getElementById("dataTable");
+  if (!data || data.length === 0) {
+    table.innerHTML = "<tr><td>❌ ไม่มีข้อมูล</td></tr>";
+    return;
+  }
 
-        if (!allData || allData.length === 0) {
-          document.getElementById("dataTable").innerHTML = "<tr><td>❌ ไม่มีข้อมูล</td></tr>";
-          return;
-        }
+  let html = `<tr>
+      <th>สาขา</th>
+      <th>วันที่</th>
+      <th>เวลา</th>
+      <th>พนักงาน</th>
+    </tr>`;
 
-        renderPage(currentPage);
+  data.forEach(row => {
+    html += `<tr>
+      <td>${row.branch || "-"}</td>
+      <td>${row.date || "-"}</td>
+      <td>${row.time || "-"}</td>
+      <td>${row.staff || "-"}</td>
+    </tr>`;
+  });
 
-      } catch (err) {
-        console.error(err);
-        document.getElementById("dataTable").innerHTML = "<tr><td>⚠️ โหลดข้อมูลผิดพลาด</td></tr>";
-      }
-    }
+  table.innerHTML = html;
+  document.getElementById("pageInfo").innerText = `หน้า ${currentPage+1} / ${Math.ceil(totalRows/pageSize)}`;
+}
 
-    function renderPage(page) {
-      const table = document.getElementById("dataTable");
-      const start = (page - 1) * pageSize;
-      const end = start + pageSize;
-      const pageData = allData.slice(start, end);
+function updateButtons() {
+  document.getElementById("prevBtn").disabled = currentPage === 0;
+  document.getElementById("nextBtn").disabled = (currentPage+1)*pageSize >= totalRows;
+}
 
-      let html = `
-        <tr>
-          <th>สาขา</th>
-          <th>วันที่</th>
-          <th>เวลา</th>
-          <th>พนักงาน</th>
-        </tr>
-      `;
+function nextPage() {
+  if ((currentPage+1)*pageSize < totalRows) {
+    currentPage++;
+    loadPage(currentPage);
+  }
+}
 
-      pageData.forEach(row => {
-        html += `
-          <tr>
-            <td>${row.branch || "-"}</td>
-            <td>${row.date || "-"}</td>
-            <td>${row.time || "-"}</td>
-            <td>${row.staff || "-"}</td>
-          </tr>
-        `;
-      });
+function prevPage() {
+  if (currentPage > 0) {
+    currentPage--;
+    loadPage(currentPage);
+  }
+}
 
-      table.innerHTML = html;
-
-      document.getElementById("pageInfo").innerText = `หน้า ${page} / ${Math.ceil(allData.length / pageSize)}`;
-
-      // ปิดปุ่มถ้าเป็นหน้าแรก/สุดท้าย
-      document.getElementById("prevBtn").disabled = page === 1;
-      document.getElementById("nextBtn").disabled = page >= Math.ceil(allData.length / pageSize);
-    }
-
-    function nextPage() {
-      if (currentPage < Math.ceil(allData.length / pageSize)) {
-        currentPage++;
-        renderPage(currentPage);
-      }
-    }
-
-    function prevPage() {
-      if (currentPage > 1) {
-        currentPage--;
-        renderPage(currentPage);
-      }
-    }
-
-    loadData();
-  </script>
+// โหลดหน้าแรก
+loadPage(currentPage);
+</script>
 </body>
 </html>
