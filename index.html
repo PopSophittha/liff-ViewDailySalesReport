@@ -13,10 +13,28 @@ th, td { border:1px solid #ddd; padding:8px 12px; text-align:center; }
 th { background:#4CAF50; color:white; }
 tr:nth-child(even) { background:#f2f2f2; }
 button { padding:6px 12px; margin:5px; cursor:pointer; }
+
+/* Spinner */
+#spinner {
+  border: 6px solid #f3f3f3;
+  border-top: 6px solid #4CAF50;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+  display: none; /* เริ่มซ่อน */
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 </style>
 </head>
 <body>
 <h2>💰 รายงานส่งยอดขายรายวัน</h2>
+<div id="spinner"></div>
 <table id="dataTable">
   <tr><td>กำลังโหลดข้อมูล...</td></tr>
 </table>
@@ -32,8 +50,13 @@ let currentPage = 0;
 const pageSize = 20;
 let totalRows = 0;
 
+function showSpinner(show) {
+  document.getElementById("spinner").style.display = show ? "block" : "none";
+}
+
 async function loadPage(page) {
   const start = page * pageSize;
+  showSpinner(true); // แสดง spinner
   try {
     const res = await fetch(`${API_URL}?start=${start}&limit=${pageSize}`);
     const json = await res.json();
@@ -43,6 +66,8 @@ async function loadPage(page) {
   } catch (err) {
     console.error(err);
     document.getElementById("dataTable").innerHTML = "<tr><td>⚠️ โหลดข้อมูลผิดพลาด</td></tr>";
+  } finally {
+    showSpinner(false); // ซ่อน spinner
   }
 }
 
