@@ -12,9 +12,10 @@ table { border-collapse: collapse; width:100%; max-width:600px; margin:0 auto; b
 th, td { border:1px solid #ddd; padding:8px 12px; text-align:center; }
 th { background:#4CAF50; color:white; }
 tr:nth-child(even) { background:#f2f2f2; }
-button { padding:6px 12px; margin:5px; cursor:pointer; }
+button { padding:6px 12px; margin:5px; cursor:pointer; position: relative; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* Spinner */
+/* Spinner กลางหน้า */
 #spinner {
   border: 6px solid #f3f3f3;
   border-top: 6px solid #4CAF50;
@@ -23,7 +24,22 @@ button { padding:6px 12px; margin:5px; cursor:pointer; }
   height: 40px;
   animation: spin 1s linear infinite;
   margin: 20px auto;
-  display: none; /* เริ่มซ่อน */
+  display: none;
+}
+
+/* Spinner เล็กปุ่ม */
+button .btn-spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #fff;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  animation: spin 1s linear infinite;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -8px 0 0 -8px;
+  display: none;
 }
 
 @keyframes spin {
@@ -39,9 +55,15 @@ button { padding:6px 12px; margin:5px; cursor:pointer; }
   <tr><td>กำลังโหลดข้อมูล...</td></tr>
 </table>
 <div>
-  <button id="prevBtn" onclick="prevPage()" disabled>◀ ก่อนหน้า</button>
+  <button id="prevBtn" onclick="prevPage()">
+    ◀ ก่อนหน้า
+    <div class="btn-spinner" id="prevSpinner"></div>
+  </button>
   <span id="pageInfo">หน้า 1</span>
-  <button id="nextBtn" onclick="nextPage()">ถัดไป ▶</button>
+  <button id="nextBtn" onclick="nextPage()">
+    ถัดไป ▶
+    <div class="btn-spinner" id="nextSpinner"></div>
+  </button>
 </div>
 
 <script>
@@ -50,13 +72,21 @@ let currentPage = 0;
 const pageSize = 20;
 let totalRows = 0;
 
+// แสดง/ซ่อน spinner กลางหน้า
 function showSpinner(show) {
   document.getElementById("spinner").style.display = show ? "block" : "none";
 }
 
-async function loadPage(page) {
+// แสดง/ซ่อน spinner บนปุ่ม
+function showBtnSpinner(btnId, show) {
+  document.getElementById(btnId).style.display = show ? "block" : "none";
+}
+
+async function loadPage(page, btnSpinnerId=null) {
   const start = page * pageSize;
-  showSpinner(true); // แสดง spinner
+  showSpinner(!btnSpinnerId); // ถ้าโหลดจากปุ่ม Next/Prev ให้ใช้ spinner ปุ่มแทน
+  if (btnSpinnerId) showBtnSpinner(btnSpinnerId, true);
+
   try {
     const res = await fetch(`${API_URL}?start=${start}&limit=${pageSize}`);
     const json = await res.json();
@@ -67,7 +97,8 @@ async function loadPage(page) {
     console.error(err);
     document.getElementById("dataTable").innerHTML = "<tr><td>⚠️ โหลดข้อมูลผิดพลาด</td></tr>";
   } finally {
-    showSpinner(false); // ซ่อน spinner
+    showSpinner(false);
+    if (btnSpinnerId) showBtnSpinner(btnSpinnerId, false);
   }
 }
 
@@ -106,14 +137,14 @@ function updateButtons() {
 function nextPage() {
   if ((currentPage+1)*pageSize < totalRows) {
     currentPage++;
-    loadPage(currentPage);
+    loadPage(currentPage, "nextSpinner");
   }
 }
 
 function prevPage() {
   if (currentPage > 0) {
     currentPage--;
-    loadPage(currentPage);
+    loadPage(currentPage, "prevSpinner");
   }
 }
 
