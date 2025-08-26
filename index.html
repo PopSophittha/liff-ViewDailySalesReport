@@ -35,11 +35,13 @@
     tr:nth-child(even) {
       background: #f2f2f2;
     }
-    input.filter {
-      width: 90%;
-      padding: 4px;
-      margin-top: 4px;
-      box-sizing: border-box;
+    .pagination {
+      margin-top: 10px;
+    }
+    button {
+      padding: 6px 12px;
+      margin: 0 5px;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -49,11 +51,86 @@
     <tr><td>กำลังโหลดข้อมูล...</td></tr>
   </table>
 
+  <div class="pagination">
+    <button id="prevBtn" onclick="prevPage()">◀ ก่อนหน้า</button>
+    <span id="pageInfo">หน้า 1</span>
+    <button id="nextBtn" onclick="nextPage()">ถัดไป ▶</button>
+  </div>
+
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbwN_PCfE_zbJc4WuNn22e63eNsd4t3HkAeQuil9QdmcfbDpGP5L9oBru1_JuBfGyl-o6w/exec";
     let allData = [];
+    let currentPage = 1;
+    const pageSize = 20;
 
     async function loadData() {
       try {
         let res = await fetch(API_URL);
-        all
+        allData = await res.json();
+
+        if (!allData || allData.length === 0) {
+          document.getElementById("dataTable").innerHTML = "<tr><td>❌ ไม่มีข้อมูล</td></tr>";
+          return;
+        }
+
+        renderPage(currentPage);
+
+      } catch (err) {
+        console.error(err);
+        document.getElementById("dataTable").innerHTML = "<tr><td>⚠️ โหลดข้อมูลผิดพลาด</td></tr>";
+      }
+    }
+
+    function renderPage(page) {
+      const table = document.getElementById("dataTable");
+      const start = (page - 1) * pageSize;
+      const end = start + pageSize;
+      const pageData = allData.slice(start, end);
+
+      let html = `
+        <tr>
+          <th>สาขา</th>
+          <th>วันที่</th>
+          <th>เวลา</th>
+          <th>พนักงาน</th>
+        </tr>
+      `;
+
+      pageData.forEach(row => {
+        html += `
+          <tr>
+            <td>${row.branch || "-"}</td>
+            <td>${row.date || "-"}</td>
+            <td>${row.time || "-"}</td>
+            <td>${row.staff || "-"}</td>
+          </tr>
+        `;
+      });
+
+      table.innerHTML = html;
+
+      document.getElementById("pageInfo").innerText = `หน้า ${page} / ${Math.ceil(allData.length / pageSize)}`;
+
+      // ปิดปุ่มถ้าเป็นหน้าแรก/สุดท้าย
+      document.getElementById("prevBtn").disabled = page === 1;
+      document.getElementById("nextBtn").disabled = page >= Math.ceil(allData.length / pageSize);
+    }
+
+    function nextPage() {
+      if (currentPage < Math.ceil(allData.length / pageSize)) {
+        currentPage++;
+        renderPage(currentPage);
+      }
+    }
+
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        renderPage(currentPage);
+      }
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
