@@ -113,18 +113,20 @@ function renderTable(data) {
       <th>สาขา</th>
       <th>วันที่</th>
       <th>เวลา</th>
-      <th>พนักงาน</th>
     </tr>`;
+      
+  // <th>พนักงาน</th>
 
   data.forEach(row => {
     html += `<tr>
       <td>${row.branch || "-"}</td>
       <td>${row.date || "-"}</td>
       <td>${row.time || "-"}</td>
-      <td>${row.staff || "-"}</td>
     </tr>`;
   });
-
+  
+  //<td>${row.staff || "-"}</td>
+  
   table.innerHTML = html;
   document.getElementById("pageInfo").innerText = `หน้า ${currentPage+1} / ${Math.ceil(totalRows/pageSize)}`;
 }
