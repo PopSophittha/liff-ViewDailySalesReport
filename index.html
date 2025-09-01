@@ -64,10 +64,7 @@ button .btn-spinner {
         วันที่<br>
         <input type="text" class="filter" id="filterDate" onkeyup="reloadWithFilter()">
       </th>
-      <th>
-        เวลา<br>
-        <input type="text" class="filter" id="filterTime" onkeyup="reloadWithFilter()">
-      </th>
+      <th>เวลา</th>
     </tr>
   </thead>
   <tbody id="tableBody">
@@ -106,13 +103,12 @@ async function loadPage(page, btnSpinnerId=null) {
   const start = page * pageSize;
   const branch = document.getElementById("filterBranch").value || "";
   const date   = document.getElementById("filterDate").value || "";
-  const time   = document.getElementById("filterTime").value || "";
 
   showSpinner(!btnSpinnerId);
   if (btnSpinnerId) showBtnSpinner(btnSpinnerId, true);
 
   try {
-    const url = `${API_URL}?start=${start}&limit=${pageSize}&branch=${encodeURIComponent(branch)}&date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}`;
+    const url = `${API_URL}?start=${start}&limit=${pageSize}&branch=${encodeURIComponent(branch)}&date=${encodeURIComponent(date)}`;
     const res = await fetch(url);
     const json = await res.json();
     totalRows = json.total;
