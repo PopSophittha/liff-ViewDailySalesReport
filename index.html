@@ -8,10 +8,11 @@
 <style>
 body { font-family: sans-serif; padding:20px; background:#f9f9f9; text-align:center; }
 h2 { margin-bottom:20px; }
-table { border-collapse: collapse; width:100%; max-width:600px; margin:0 auto; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+table { border-collapse: collapse; width:100%; max-width:800px; margin:0 auto; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
 th, td { border:1px solid #ddd; padding:8px 12px; text-align:center; }
 th { background:#4CAF50; color:white; }
 tr:nth-child(even) { background:#f2f2f2; }
+input.filter { width:90%; padding:4px; font-size:12px; margin-top:4px; }
 button { padding:6px 12px; margin:5px; cursor:pointer; position: relative; }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -51,9 +52,29 @@ button .btn-spinner {
 <body>
 <h2>💰 รายงานส่งยอดขายรายวัน</h2>
 <div id="spinner"></div>
+
 <table id="dataTable">
-  <tr><td>กำลังโหลดข้อมูล...</td></tr>
+  <thead>
+    <tr>
+      <th>
+        สาขา<br>
+        <input type="text" class="filter" id="filterBranch" onkeyup="reloadWithFilter()">
+      </th>
+      <th>
+        วันที่<br>
+        <input type="text" class="filter" id="filterDate" onkeyup="reloadWithFilter()">
+      </th>
+      <th>
+        เวลา<br>
+        <input type="text" class="filter" id="filterTime" onkeyup="reloadWithFilter()">
+      </th>
+    </tr>
+  </thead>
+  <tbody id="tableBody">
+    <tr><td colspan="3">กำลังโหลดข้อมูล...</td></tr>
+  </tbody>
 </table>
+
 <div>
   <button id="prevBtn" onclick="prevPage()">
     ◀ ก่อนหน้า
@@ -72,30 +93,34 @@ let currentPage = 0;
 const pageSize = 20;
 let totalRows = 0;
 
-// แสดง/ซ่อน spinner กลางหน้า
+// Spinner กลางหน้า
 function showSpinner(show) {
   document.getElementById("spinner").style.display = show ? "block" : "none";
 }
-
-// แสดง/ซ่อน spinner บนปุ่ม
+// Spinner ปุ่ม
 function showBtnSpinner(btnId, show) {
   document.getElementById(btnId).style.display = show ? "block" : "none";
 }
 
 async function loadPage(page, btnSpinnerId=null) {
   const start = page * pageSize;
-  showSpinner(!btnSpinnerId); // ถ้าโหลดจากปุ่ม Next/Prev ให้ใช้ spinner ปุ่มแทน
+  const branch = document.getElementById("filterBranch").value || "";
+  const date   = document.getElementById("filterDate").value || "";
+  const time   = document.getElementById("filterTime").value || "";
+
+  showSpinner(!btnSpinnerId);
   if (btnSpinnerId) showBtnSpinner(btnSpinnerId, true);
 
   try {
-    const res = await fetch(`${API_URL}?start=${start}&limit=${pageSize}`);
+    const url = `${API_URL}?start=${start}&limit=${pageSize}&branch=${encodeURIComponent(branch)}&date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}`;
+    const res = await fetch(url);
     const json = await res.json();
     totalRows = json.total;
     renderTable(json.data);
     updateButtons();
   } catch (err) {
     console.error(err);
-    document.getElementById("dataTable").innerHTML = "<tr><td>⚠️ โหลดข้อมูลผิดพลาด</td></tr>";
+    document.getElementById("tableBody").innerHTML = "<tr><td colspan='3'>⚠️ โหลดข้อมูลผิดพลาด</td></tr>";
   } finally {
     showSpinner(false);
     if (btnSpinnerId) showBtnSpinner(btnSpinnerId, false);
@@ -103,31 +128,21 @@ async function loadPage(page, btnSpinnerId=null) {
 }
 
 function renderTable(data) {
-  const table = document.getElementById("dataTable");
+  const tbody = document.getElementById("tableBody");
   if (!data || data.length === 0) {
-    table.innerHTML = "<tr><td>❌ ไม่มีข้อมูล</td></tr>";
+    tbody.innerHTML = "<tr><td colspan='3'>❌ ไม่มีข้อมูล</td></tr>";
+    document.getElementById("pageInfo").innerText = `หน้า 0 / 0`;
     return;
   }
 
-  let html = `<tr>
-      <th>สาขา</th>
-      <th>วันที่</th>
-      <th>เวลา</th>
-    </tr>`;
-      
-  // <th>พนักงาน</th>
-
-  data.forEach(row => {
-    html += `<tr>
+  tbody.innerHTML = data.map(row => `
+    <tr>
       <td>${row.branch || "-"}</td>
       <td>${row.date || "-"}</td>
       <td>${row.time || "-"}</td>
-    </tr>`;
-  });
-  
-  //<td>${row.staff || "-"}</td>
-  
-  table.innerHTML = html;
+    </tr>
+  `).join("");
+
   document.getElementById("pageInfo").innerText = `หน้า ${currentPage+1} / ${Math.ceil(totalRows/pageSize)}`;
 }
 
@@ -150,7 +165,13 @@ function prevPage() {
   }
 }
 
-// โหลดหน้าแรก
+// กรอก filter → โหลดหน้าแรกใหม่
+function reloadWithFilter() {
+  currentPage = 0;
+  loadPage(currentPage);
+}
+
+// โหลดครั้งแรก
 loadPage(currentPage);
 </script>
 </body>
