@@ -40,23 +40,39 @@ background:white; padding:20px; border-radius:10px; box-shadow:0 5px 15px rgba(0
 
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbwLQUuRzCf4MzRJ3A1H2DDmyfHJQRFfE21xgqkTS2wnaK3lUn-fMnDhrSFzDkzu_nwm3w/exec";
-let hasShown = false;
 
+let hasShown = false;
+let globalMissing = [];
+
+// =====================
+// โหลดข้อมูล
+// =====================
 async function loadData() {
   const res = await fetch(API_URL);
   const json = await res.json();
 
-  renderTable(json.data);
-  showBanner(json.missingShifts);
+  globalMissing = json.missingShifts || [];
+
+  renderTable(json.data || []);
+  showBanner(globalMissing);
 
   if (!hasShown) {
-    showPopup(json.missingShifts);
+    showPopup(globalMissing);
     hasShown = true;
   }
 }
 
+// =====================
+// ตาราง
+// =====================
 function renderTable(data) {
   const tbody = document.getElementById("tableBody");
+
+  if (!data || data.length === 0) {
+    tbody.innerHTML = "<tr><td colspan='3'>ไม่มีข้อมูล</td></tr>";
+    return;
+  }
+
   tbody.innerHTML = data.map(r => `
     <tr>
       <td>${r.branch}</td>
@@ -66,17 +82,37 @@ function renderTable(data) {
   `).join("");
 }
 
-// 🔴 banner
+// =====================
+// banner (กดได้)
+// =====================
 function showBanner(list){
-  document.getElementById("alertBox").innerText =
-    list.length > 0 ? `⚠️ พบ ${list.length} กะที่ยังไม่ครบ` : "";
+  const box = document.getElementById("alertBox");
+
+  if (list.length > 0) {
+    box.innerHTML = `⚠️ พบ ${list.length} กะที่ยังไม่ครบ (กดเพื่อดู)`;
+    box.style.cursor = "pointer";
+
+    box.onclick = () => {
+      sessionStorage.setItem("missingData", JSON.stringify(list));
+      window.location.href = "missing.html";
+    };
+
+  } else {
+    box.innerText = "";
+  }
 }
 
-// 🔴 popup (เฉพาะวันนี้)
+// =====================
+// popup (วันนี้ - ค.ศ.)
+// =====================
 function showPopup(list){
-  const today = new Date().toLocaleDateString("th-TH");
+  const now = new Date();
+
+  // 🔥 format ให้ตรง API → d/m/yyyy (2026)
+  const today = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}`;
 
   const todayList = list.filter(d => d.date === today);
+
   if (todayList.length === 0) return;
 
   let html = "<b>⚠️ วันนี้ยังไม่ครบ</b><br><br>";
