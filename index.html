@@ -107,18 +107,31 @@ function showBanner(list){
 // =====================
 function showPopup(list){
   const now = new Date();
-
-  // 🔥 format ให้ตรง API → d/m/yyyy (2026)
   const today = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}`;
 
   const todayList = list.filter(d => d.date === today);
-
   if (todayList.length === 0) return;
 
-  let html = "<b>⚠️ วันนี้ยังไม่ครบ</b><br><br>";
+  // 🔥 group ตาม branch
+  const grouped = {};
 
   todayList.forEach(d => {
-    html += `${d.branch} | ${d.shift}<br>`;
+    if (!grouped[d.branch]) {
+      grouped[d.branch] = new Set();
+    }
+    grouped[d.branch].add(d.date);
+  });
+
+  let html = `<b>⚠️ วันนี้ (${today}) ยังไม่ครบ</b><br><br>`;
+
+  Object.keys(grouped).forEach(branch => {
+    html += `📍 <b>${branch}</b><br>วันที่:<br>`;
+
+    grouped[branch].forEach(date => {
+      html += `${date}<br>`;
+    });
+
+    html += `<br>`;
   });
 
   document.getElementById("popupText").innerHTML = html;
