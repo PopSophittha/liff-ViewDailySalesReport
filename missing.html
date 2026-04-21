@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>กะที่ยังไม่ครบ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body { font-family:sans-serif; padding:20px; background:#f9f9f9; }
+table { width:100%; border-collapse:collapse; background:white; }
+th, td { border:1px solid #ddd; padding:8px; text-align:center; }
+th { background:#f44336; color:white; }
+h2 { text-align:center; }
+button { margin-bottom:10px; }
+tr:nth-child(even){ background:#ffecec; }
+</style>
+</head>
+
+<body>
+
+<h2>⚠️ กะที่ยังไม่ครบ</h2>
+
+<button onclick="goBack()">⬅️ กลับ</button>
+
+<table>
+<thead>
+<tr>
+<th>สาขา</th>
+<th>วันที่</th>
+<th>กะ</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
+
+<script>
+function goBack(){
+  window.history.back();
+}
+
+function loadMissing(){
+  let data = JSON.parse(sessionStorage.getItem("missingData") || "[]");
+
+  const tbody = document.getElementById("tableBody");
+
+  if (data.length === 0) {
+    tbody.innerHTML = "<tr><td colspan='3'>ไม่มีข้อมูล</td></tr>";
+    return;
+  }
+
+  // 🔥 เรียงจากใหม่ → เก่า
+  data.sort((a,b)=>{
+    const da = new Date(a.date.split("/").reverse());
+    const db = new Date(b.date.split("/").reverse());
+    return db - da;
+  });
+
+  tbody.innerHTML = data.map(d => `
+    <tr>
+      <td>${d.branch}</td>
+      <td>${d.date}</td>
+      <td>${d.shift}</td>
+    </tr>
+  `).join("");
+}
+
+loadMissing();
+</script>
+
+</body>
+</html>
