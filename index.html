@@ -2,6 +2,8 @@
 <html>
 <head>
 <meta charset="UTF-8">
+
+  
 <title>รายงานส่งยอดขาย</title>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -106,30 +108,35 @@ function showBanner(list){
 // popup (วันนี้ - ค.ศ.)
 // =====================
 function showPopup(list){
-  const now = new Date();
-  const today = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}`;
 
-  const todayList = list.filter(d => d.date === today);
-  if (todayList.length === 0) return;
+  if (!list || list.length === 0) return;
 
   // 🔥 group ตาม branch
   const grouped = {};
 
-  todayList.forEach(d => {
+  list.forEach(d => {
     if (!grouped[d.branch]) {
       grouped[d.branch] = new Set();
     }
     grouped[d.branch].add(d.date);
   });
 
-  let html = `<b>⚠️ วันนี้ (${today}) ยังไม่ครบ</b><br><br>`;
+  let html = `<b>⚠️ สาขาที่ยังส่งข้อมูลไม่ครบ</b><br><br>`;
 
   Object.keys(grouped).forEach(branch => {
+
     html += `📍 <b>${branch}</b><br>วันที่:<br>`;
 
-    grouped[branch].forEach(date => {
-      html += `${date}<br>`;
-    });
+    // 🔥 เรียงวันที่
+    [...grouped[branch]]
+      .sort((a,b)=>{
+        const da = new Date(a.split("/").reverse());
+        const db = new Date(b.split("/").reverse());
+        return da - db;
+      })
+      .forEach(date => {
+        html += `${date}<br>`;
+      });
 
     html += `<br>`;
   });
