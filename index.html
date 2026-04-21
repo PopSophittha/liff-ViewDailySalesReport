@@ -2,173 +2,99 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>รายงานส่งยอดขายรายวัน</title>
+<title>รายงานส่งยอดขาย</title>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <style>
-body { font-family: sans-serif; padding:20px; background:#f9f9f9; text-align:center; }
-h2 { margin-bottom:20px; }
-table { border-collapse: collapse; width:100%; max-width:800px; margin:0 auto; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
-th, td { border:1px solid #ddd; padding:8px 12px; text-align:center; }
+body { font-family:sans-serif; padding:20px; background:#f9f9f9; text-align:center; }
+table { width:100%; max-width:800px; margin:auto; border-collapse:collapse; background:white; }
+th, td { border:1px solid #ddd; padding:8px; }
 th { background:#4CAF50; color:white; }
-tr:nth-child(even) { background:#f2f2f2; }
-input.filter { width:90%; padding:4px; font-size:12px; margin-top:4px; }
-button { padding:6px 12px; margin:5px; cursor:pointer; position: relative; }
-button:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* Spinner กลางหน้า */
-#spinner {
-  border: 6px solid #f3f3f3;
-  border-top: 6px solid #4CAF50;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
-  margin: 20px auto;
-  display: none;
-}
-
-/* Spinner เล็กปุ่ม */
-button .btn-spinner {
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #fff;
-  border-radius: 50%;
-  width: 16px;
-  height: 16px;
-  animation: spin 1s linear infinite;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  margin: -8px 0 0 -8px;
-  display: none;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
+#alertBox { color:red; font-weight:bold; margin-bottom:10px; }
 </style>
 </head>
-<body>
-<h2>💰 รายงานส่งยอดขายรายวัน</h2>
-<div id="spinner"></div>
 
-<table id="dataTable">
-  <thead>
-    <tr>
-      <th>
-        สาขา<br>
-        <input type="text" class="filter" id="filterBranch" onkeyup="reloadWithFilter()">
-      </th>
-      <th>
-        วันที่<br>
-        <input type="text" class="filter" id="filterDate" onkeyup="reloadWithFilter()">
-      </th>
-      <th>เวลา</th>
-    </tr>
-  </thead>
-  <tbody id="tableBody">
-    <tr><td colspan="3">กำลังโหลดข้อมูล...</td></tr>
-  </tbody>
+<body>
+
+<h2>💰 รายงานส่งยอดขาย</h2>
+<div id="alertBox"></div>
+
+<table>
+<thead>
+<tr>
+<th>สาขา</th>
+<th>วันที่</th>
+<th>เวลา</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
 </table>
 
-<div>
-  <button id="prevBtn" onclick="prevPage()">
-    ◀ ก่อนหน้า
-    <div class="btn-spinner" id="prevSpinner"></div>
-  </button>
-  <span id="pageInfo">หน้า 1</span>
-  <button id="nextBtn" onclick="nextPage()">
-    ถัดไป ▶
-    <div class="btn-spinner" id="nextSpinner"></div>
-  </button>
+<!-- 🔴 Popup -->
+<div id="popup" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
+background:white; padding:20px; border-radius:10px; box-shadow:0 5px 15px rgba(0,0,0,0.3); z-index:9999;">
+<div id="popupText"></div>
+<button onclick="closePopup()">ปิด</button>
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbwN_PCfE_zbJc4WuNn22e63eNsd4t3HkAeQuil9QdmcfbDpGP5L9oBru1_JuBfGyl-o6w/exec";
-let currentPage = 0;
-const pageSize = 20;
-let totalRows = 0;
+const API_URL = "https://script.google.com/macros/s/AKfycbxGIayYGdPWhxBIcsFOpuvKYSs8iot-MKMXLPeO2JlrZmiZF85Fpul9MjtXxfvb7h1mYw/exec";
+let hasShown = false;
 
-// Spinner กลางหน้า
-function showSpinner(show) {
-  document.getElementById("spinner").style.display = show ? "block" : "none";
-}
-// Spinner ปุ่ม
-function showBtnSpinner(btnId, show) {
-  document.getElementById(btnId).style.display = show ? "block" : "none";
-}
+async function loadData() {
+  const res = await fetch(API_URL);
+  const json = await res.json();
 
-async function loadPage(page, btnSpinnerId=null) {
-  const start = page * pageSize;
-  const branch = document.getElementById("filterBranch").value || "";
-  const date   = document.getElementById("filterDate").value || "";
+  renderTable(json.data);
+  showBanner(json.missingShifts);
 
-  showSpinner(!btnSpinnerId);
-  if (btnSpinnerId) showBtnSpinner(btnSpinnerId, true);
-
-  try {
-    const url = `${API_URL}?start=${start}&limit=${pageSize}&branch=${encodeURIComponent(branch)}&date=${encodeURIComponent(date)}`;
-    const res = await fetch(url);
-    const json = await res.json();
-    totalRows = json.total;
-    renderTable(json.data);
-    updateButtons();
-  } catch (err) {
-    console.error(err);
-    document.getElementById("tableBody").innerHTML = "<tr><td colspan='3'>⚠️ โหลดข้อมูลผิดพลาด</td></tr>";
-  } finally {
-    showSpinner(false);
-    if (btnSpinnerId) showBtnSpinner(btnSpinnerId, false);
+  if (!hasShown) {
+    showPopup(json.missingShifts);
+    hasShown = true;
   }
 }
 
 function renderTable(data) {
   const tbody = document.getElementById("tableBody");
-  if (!data || data.length === 0) {
-    tbody.innerHTML = "<tr><td colspan='3'>❌ ไม่มีข้อมูล</td></tr>";
-    document.getElementById("pageInfo").innerText = `หน้า 0 / 0`;
-    return;
-  }
-
-  tbody.innerHTML = data.map(row => `
+  tbody.innerHTML = data.map(r => `
     <tr>
-      <td>${row.branch || "-"}</td>
-      <td>${row.date || "-"}</td>
-      <td>${row.time || "-"}</td>
+      <td>${r.branch}</td>
+      <td>${r.date}</td>
+      <td>${r.time}</td>
     </tr>
   `).join("");
-
-  document.getElementById("pageInfo").innerText = `หน้า ${currentPage+1} / ${Math.ceil(totalRows/pageSize)}`;
 }
 
-function updateButtons() {
-  document.getElementById("prevBtn").disabled = currentPage === 0;
-  document.getElementById("nextBtn").disabled = (currentPage+1)*pageSize >= totalRows;
+// 🔴 banner
+function showBanner(list){
+  document.getElementById("alertBox").innerText =
+    list.length > 0 ? `⚠️ พบ ${list.length} กะที่ยังไม่ครบ` : "";
 }
 
-function nextPage() {
-  if ((currentPage+1)*pageSize < totalRows) {
-    currentPage++;
-    loadPage(currentPage, "nextSpinner");
-  }
+// 🔴 popup (เฉพาะวันนี้)
+function showPopup(list){
+  const today = new Date().toLocaleDateString("th-TH");
+
+  const todayList = list.filter(d => d.date === today);
+  if (todayList.length === 0) return;
+
+  let html = "<b>⚠️ วันนี้ยังไม่ครบ</b><br><br>";
+
+  todayList.forEach(d => {
+    html += `${d.branch} | ${d.shift}<br>`;
+  });
+
+  document.getElementById("popupText").innerHTML = html;
+  document.getElementById("popup").style.display = "block";
 }
 
-function prevPage() {
-  if (currentPage > 0) {
-    currentPage--;
-    loadPage(currentPage, "prevSpinner");
-  }
+function closePopup(){
+  document.getElementById("popup").style.display = "none";
 }
 
-// กรอก filter → โหลดหน้าแรกใหม่
-function reloadWithFilter() {
-  currentPage = 0;
-  loadPage(currentPage);
-}
-
-// โหลดครั้งแรก
-loadPage(currentPage);
+loadData();
 </script>
+
 </body>
 </html>
