@@ -2,25 +2,36 @@
 <html>
 <head>
 <meta charset="UTF-8">
-
-  
 <title>รายงานส่งยอดขาย</title>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
 body { font-family:sans-serif; padding:20px; background:#f9f9f9; text-align:center; }
-table { width:100%; max-width:800px; margin:auto; border-collapse:collapse; background:white; }
+table { width:100%; max-width:900px; margin:auto; border-collapse:collapse; background:white; }
 th, td { border:1px solid #ddd; padding:8px; }
 th { background:#4CAF50; color:white; }
-#alertBox { color:red; font-weight:bold; margin-bottom:10px; }
+#alertBox { color:red; font-weight:bold; margin-bottom:10px; cursor:pointer; }
+
+input { padding:5px; margin:5px; width:120px; }
+
+button { padding:6px 12px; margin:5px; }
+
 </style>
 </head>
 
 <body>
 
 <h2>💰 รายงานส่งยอดขาย</h2>
+
 <div id="alertBox"></div>
+
+<!-- 🔍 filter -->
+<div>
+  <input type="text" id="filterBranch" placeholder="สาขา">
+  <input type="text" id="filterDate" placeholder="วันที่ (เช่น 1/4/2026)">
+  <button onclick="reload()">ค้นหา</button>
+</div>
 
 <table>
 <thead>
@@ -32,6 +43,13 @@ th { background:#4CAF50; color:white; }
 </thead>
 <tbody id="tableBody"></tbody>
 </table>
+
+<!-- 📄 paging -->
+<div>
+  <button onclick="prevPage()">◀ ก่อนหน้า</button>
+  <span id="pageInfo"></span>
+  <button onclick="nextPage()">ถัดไป ▶</button>
+</div>
 
 <!-- 🔴 Popup -->
 <div id="popup" style="
@@ -57,19 +75,33 @@ max-width:600px;
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbwLQUuRzCf4MzRJ3A1H2DDmyfHJQRFfE21xgqkTS2wnaK3lUn-fMnDhrSFzDkzu_nwm3w/exec";
 
-let hasShown = false;
+let currentPage = 0;
+const pageSize = 20;
+let totalRows = 0;
+
 let globalMissing = [];
+let hasShown = false;
 
 // =====================
-// โหลดข้อมูล
+// โหลดข้อมูล (รองรับ paging + filter)
 // =====================
 async function loadData() {
-  const res = await fetch(API_URL);
+
+  const branch = document.getElementById("filterBranch").value || "";
+  const date = document.getElementById("filterDate").value || "";
+
+  const start = currentPage * pageSize;
+
+  const url = `${API_URL}?start=${start}&limit=${pageSize}&branch=${encodeURIComponent(branch)}&date=${encodeURIComponent(date)}`;
+
+  const res = await fetch(url);
   const json = await res.json();
 
+  totalRows = json.total || 0;
   globalMissing = json.missingShifts || [];
 
   renderTable(json.data || []);
+  updatePageInfo();
   showBanner(globalMissing);
 
   if (!hasShown) {
@@ -99,14 +131,43 @@ function renderTable(data) {
 }
 
 // =====================
-// banner (กดได้)
+// paging
+// =====================
+function updatePageInfo(){
+  document.getElementById("pageInfo").innerText =
+    `หน้า ${currentPage+1} / ${Math.ceil(totalRows/pageSize) || 1}`;
+}
+
+function nextPage(){
+  if ((currentPage+1)*pageSize < totalRows){
+    currentPage++;
+    loadData();
+  }
+}
+
+function prevPage(){
+  if (currentPage > 0){
+    currentPage--;
+    loadData();
+  }
+}
+
+// =====================
+// filter reload
+// =====================
+function reload(){
+  currentPage = 0;
+  loadData();
+}
+
+// =====================
+// banner (กดไปหน้า missing)
 // =====================
 function showBanner(list){
   const box = document.getElementById("alertBox");
 
   if (list.length > 0) {
     box.innerHTML = `⚠️ พบ ${list.length} กะที่ยังไม่ครบ (กดเพื่อดู)`;
-    box.style.cursor = "pointer";
 
     box.onclick = () => {
       sessionStorage.setItem("missingData", JSON.stringify(list));
@@ -119,13 +180,12 @@ function showBanner(list){
 }
 
 // =====================
-// popup (วันนี้ - ค.ศ.)
+// popup summary (2 column)
 // =====================
 function showPopup(list){
 
   if (!list || list.length === 0) return;
 
-  // 🔥 group ตาม branch
   const grouped = {};
 
   list.forEach(d => {
@@ -137,14 +197,12 @@ function showPopup(list){
 
   let html = `<b>⚠️ สาขาที่ยังไม่ครบ</b><br><br>`;
 
-  // 🔥 เริ่ม grid 2 column
   html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; text-align:left;">`;
 
   Object.keys(grouped).forEach(branch => {
 
     html += `<div style="border:1px solid #eee; padding:8px; border-radius:8px;">
-      <b>📍 ${branch}</b><br>
-      วันที่:<br>
+      <b>📍 ${branch}</b><br>วันที่:<br>
     `;
 
     [...grouped[branch]]
@@ -170,6 +228,7 @@ function closePopup(){
   document.getElementById("popup").style.display = "none";
 }
 
+// =====================
 loadData();
 </script>
 
