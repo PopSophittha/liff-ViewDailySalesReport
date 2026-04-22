@@ -55,13 +55,38 @@ function loadMissing(){
     return db - da;
   });
 
-  tbody.innerHTML = data.map(d => `
-    <tr>
-      <td>${d.branch}</td>
-      <td>${d.date}</td>
-      <td>${d.shift}</td>
-    </tr>
-  `).join("");
+  // 🔥 group branch + date
+const grouped = {};
+
+data.forEach(d => {
+  const key = d.branch + "_" + d.date;
+
+  if (!grouped[key]) {
+    grouped[key] = {
+      branch: d.branch,
+      date: d.date,
+      shifts: []
+    };
+  }
+
+  grouped[key].shifts.push(d.shift);
+});
+
+// 🔥 เรียงวันที่ใหม่ → เก่า
+const sorted = Object.values(grouped).sort((a,b)=>{
+  const da = new Date(a.date.split("/").reverse());
+  const db = new Date(b.date.split("/").reverse());
+  return db - da;
+});
+
+// 🔥 render
+tbody.innerHTML = sorted.map(d => `
+  <tr>
+    <td>${d.branch}</td>
+    <td>${d.date}</td>
+    <td>${d.shifts.join(", ")}</td>
+  </tr>
+`).join("");
 }
 
 loadMissing();
