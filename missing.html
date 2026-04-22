@@ -55,7 +55,7 @@ function loadMissing(){
     return db - da;
   });
 
-  // 🔥 group branch + date
+// 🔥 group branch + date
 const grouped = {};
 
 data.forEach(d => {
@@ -65,11 +65,11 @@ data.forEach(d => {
     grouped[key] = {
       branch: d.branch,
       date: d.date,
-      shifts: []
+      shifts: new Set() // ✅ ใช้ set กันซ้ำ
     };
   }
 
-  grouped[key].shifts.push(d.shift);
+  grouped[key].shifts.add(d.shift);
 });
 
 // 🔥 เรียงวันที่ใหม่ → เก่า
@@ -79,12 +79,25 @@ const sorted = Object.values(grouped).sort((a,b)=>{
   return db - da;
 });
 
+// 🔥 function เรียง shift
+function sortShift(shifts){
+  const order = {
+    "09:00-14:00": 1,
+    "14:00-18:00": 2,
+    "18:00-23:00": 3
+  };
+
+  return [...shifts].sort((a,b)=>{
+    return (order[a] || 99) - (order[b] || 99);
+  });
+}
+
 // 🔥 render
 tbody.innerHTML = sorted.map(d => `
   <tr>
     <td>${d.branch}</td>
     <td>${d.date}</td>
-    <td>${d.shifts.join(", ")}</td>
+    <td>${sortShift(d.shifts).join(", ")}</td>
   </tr>
 `).join("");
 }
