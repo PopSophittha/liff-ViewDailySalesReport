@@ -14,9 +14,33 @@ th { background:#4CAF50; color:white; }
 #alertBox { color:red; font-weight:bold; margin-bottom:10px; cursor:pointer; }
 
 input { padding:5px; margin:5px; width:120px; }
-
 button { padding:6px 12px; margin:5px; }
 
+/* 🔄 Loading */
+#loadingOverlay {
+  display:none;
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  background:rgba(0,0,0,0.3);
+  z-index:99999;
+  justify-content:center;
+  align-items:center;
+}
+
+.spinner {
+  width:60px;
+  height:60px;
+  border:6px solid #eee;
+  border-top:6px solid #4CAF50;
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg);}
+  100% { transform: rotate(360deg);}
+}
 </style>
 </head>
 
@@ -29,7 +53,7 @@ button { padding:6px 12px; margin:5px; }
 <!-- 🔍 filter -->
 <div>
   <input type="text" id="filterBranch" placeholder="สาขา">
-  <input type="text" id="filterDate" placeholder="วันที่ (เช่น 1/4/2026)">
+  <input type="text" id="filterDate" placeholder="วันที่ (1/4/2026)">
   <button onclick="reload()">ค้นหา</button>
 </div>
 
@@ -72,6 +96,11 @@ max-width:600px;
 <button onclick="closePopup()">ปิด</button>
 </div>
 
+<!-- 🔄 Loading -->
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+</div>
+
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbwLQUuRzCf4MzRJ3A1H2DDmyfHJQRFfE21xgqkTS2wnaK3lUn-fMnDhrSFzDkzu_nwm3w/exec";
 
@@ -81,33 +110,61 @@ let totalRows = 0;
 
 let globalMissing = [];
 let hasShown = false;
+let isLoading = false;
 
 // =====================
-// โหลดข้อมูล (รองรับ paging + filter)
+// loading control
+// =====================
+function showLoading(show){
+  const overlay = document.getElementById("loadingOverlay");
+  overlay.style.display = show ? "flex" : "none";
+
+  document.body.style.pointerEvents = show ? "none" : "auto";
+  overlay.style.pointerEvents = "auto";
+}
+
+// =====================
+// โหลดข้อมูล
 // =====================
 async function loadData() {
 
-  const branch = document.getElementById("filterBranch").value || "";
-  const date = document.getElementById("filterDate").value || "";
+  if (isLoading) return;
+  isLoading = true;
 
-  const start = currentPage * pageSize;
+  showLoading(true);
 
-  const url = `${API_URL}?start=${start}&limit=${pageSize}&branch=${encodeURIComponent(branch)}&date=${encodeURIComponent(date)}`;
+  try {
 
-  const res = await fetch(url);
-  const json = await res.json();
+    const branch = document.getElementById("filterBranch").value || "";
+    const date = document.getElementById("filterDate").value || "";
 
-  totalRows = json.total || 0;
-  globalMissing = json.missingShifts || [];
+    const start = currentPage * pageSize;
 
-  renderTable(json.data || []);
-  updatePageInfo();
-  showBanner(globalMissing);
+    const url = `${API_URL}?start=${start}&limit=${pageSize}&branch=${encodeURIComponent(branch)}&date=${encodeURIComponent(date)}`;
 
-  if (!hasShown) {
-    showPopup(globalMissing);
-    hasShown = true;
+    const res = await fetch(url);
+    const json = await res.json();
+
+    totalRows = json.total || 0;
+    globalMissing = json.missingShifts || [];
+
+    renderTable(json.data || []);
+    updatePageInfo();
+    showBanner(globalMissing);
+
+    if (!hasShown) {
+      showPopup(globalMissing);
+      hasShown = true;
+    }
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById("tableBody").innerHTML =
+      "<tr><td colspan='3'>โหลดข้อมูลผิดพลาด</td></tr>";
   }
+
+  showLoading(false);
+  isLoading = false;
 }
 
 // =====================
@@ -153,7 +210,7 @@ function prevPage(){
 }
 
 // =====================
-// filter reload
+// filter
 // =====================
 function reload(){
   currentPage = 0;
@@ -161,7 +218,7 @@ function reload(){
 }
 
 // =====================
-// banner (กดไปหน้า missing)
+// banner
 // =====================
 function showBanner(list){
   const box = document.getElementById("alertBox");
@@ -180,7 +237,7 @@ function showBanner(list){
 }
 
 // =====================
-// popup summary (2 column)
+// popup summary
 // =====================
 function showPopup(list){
 
